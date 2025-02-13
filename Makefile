@@ -40,8 +40,7 @@ all: $(targets)
 %.o: %.s
 	$(AS) -o $@ $(AFLAGS) $<
 %.o: %.asm
-	mkdir -p $(OBJ)
-	$(AS) -o $@ $(AFLAGS) -l $(OBJ)/$*.lst $<
+	$(AS) -o $@ $(AFLAGS) -l $*.lst $<
 
 # Rule for making a *.o file out of a *.bmp file
 %.o : %.bmp
@@ -62,4 +61,5 @@ clean :
 	$(RM) *.spr
 	$(RM) *.s
 	$(RM) *.o
-	$(RM) *.pal
+	$(RM) *.lnx
+	$(RM) *.lyx

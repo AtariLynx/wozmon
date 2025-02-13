@@ -1,0 +1,664 @@
+ca65 V2.19 - Git d5cf8ef7e
+Main file   : wozmon.asm
+Current file: wozmon.asm
+
+000000r 1               .setcpu "65C02"
+000000r 1               
+000000r 1               .include "lynx.inc"
+000000r 2               ; Lynx system hardware includes
+000000r 2               ; Shawn Jefferson
+000000r 2               ; June 18th, 2004
+000000r 2               ;
+000000r 2               ; Reference:
+000000r 2               ;  Bastian Schick's Lynx Documentation
+000000r 2               ;  http://www.geocities.ws/SiliconValley/Byte/4242/lynx/
+000000r 2               ;
+000000r 2               
+000000r 2               ; ***
+000000r 2               ; *** Suzy Addresses
+000000r 2               ; ***
+000000r 2               
+000000r 2               ; Sprite Control Block
+000000r 2               
+000000r 2               TMPADRL     = $FC00
+000000r 2               TMPADRH     = $FC01
+000000r 2               TILTACUML   = $FC02
+000000r 2               TILTACUMH   = $FC03
+000000r 2               HOFFL       = $FC04
+000000r 2               HOFFH       = $FC05
+000000r 2               VOFFL       = $FC06
+000000r 2               VOFFH       = $FC07
+000000r 2               VIDBASL     = $FC08
+000000r 2               VIDBASH     = $FC09
+000000r 2               COLLBASL    = $FC0A
+000000r 2               COLLBASH    = $FC0B
+000000r 2               VIDADRL     = $FC0C
+000000r 2               VIDADRH     = $FC0D
+000000r 2               COLLADRL    = $FC0E
+000000r 2               COLLADRH    = $FC0F
+000000r 2               SCBNEXTL    = $FC10
+000000r 2               SCBNEXTH    = $FC11
+000000r 2               SPRDLINEL   = $FC12
+000000r 2               SPRDLINEH   = $FC13
+000000r 2               HPOSSTRTL   = $FC14
+000000r 2               HPOSSTRTH   = $FC15
+000000r 2               VPOSSTRTL   = $FC16
+000000r 2               VPOSSTRTH   = $FC17
+000000r 2               SPRHSIZL    = $FC18
+000000r 2               SPRHSIZH    = $FC19
+000000r 2               SPRVSIZL    = $FC1A
+000000r 2               SPRVSIZH    = $FC1B
+000000r 2               STRETCHL    = $FC1C
+000000r 2               STRETCHH    = $FC1D
+000000r 2               TILTL       = $FC1E
+000000r 2               TILTH       = $FC1F
+000000r 2               SPRDOFFL    = $FC20
+000000r 2               SPRDOFFH    = $FC21
+000000r 2               SPRVPOSL    = $FC22
+000000r 2               SPRVPOSH    = $FC23
+000000r 2               COLLOFFL    = $FC24
+000000r 2               COLLOFFH    = $FC25
+000000r 2               VSIZACUML   = $FC26
+000000r 2               VSIZACUMH   = $FC27
+000000r 2               HSIZOFFL    = $FC28
+000000r 2               HSIZOFFH    = $FC29
+000000r 2               VSIZOFFL    = $FC2A
+000000r 2               VSIZOFFH    = $FC2B
+000000r 2               SCBADRL     = $FC2C
+000000r 2               SCBADRH     = $FC2D
+000000r 2               PROCADRL    = $FC2E
+000000r 2               PROCADRH    = $FC2F
+000000r 2               
+000000r 2               ; Suzy Math
+000000r 2               
+000000r 2               MATHD       = $FC52
+000000r 2               MATHC       = $FC53
+000000r 2               MATHB       = $FC54
+000000r 2               MATHA       = $FC55
+000000r 2               MATHP       = $FC56
+000000r 2               MATHN       = $FC57
+000000r 2               MATHH       = $FC60
+000000r 2               MATHG       = $FC61
+000000r 2               MATHF       = $FC62
+000000r 2               MATHE       = $FC63
+000000r 2               MATHM       = $FC6C
+000000r 2               MATHL       = $FC6D
+000000r 2               MATHK       = $FC6E
+000000r 2               MATHJ       = $FC6F
+000000r 2               
+000000r 2               ; Suzy sprite engine
+000000r 2               
+000000r 2               SPRCTL0          = $FC80
+000000r 2               ; Sprite bits-per-pixel definitions
+000000r 2               BPP_MASK         = %11000000  ; Mask for settings bits per pixel
+000000r 2               BPP_1            = %00000000
+000000r 2               BPP_2            = %01000000
+000000r 2               BPP_3            = %10000000
+000000r 2               BPP_4            = %11000000
+000000r 2               ; More sprite control 0 bit definitions
+000000r 2               HFLIP            = %00100000
+000000r 2               VFLIP            = %00010000
+000000r 2               ; Sprite types - redefined to reflect the reality caused by the shadow error
+000000r 2               TYPE_SHADOW      = %00000111
+000000r 2               TYPE_XOR         = %00000110
+000000r 2               TYPE_NONCOLL     = %00000101  ; Non-colliding
+000000r 2               TYPE_NORMAL      = %00000100
+000000r 2               TYPE_BOUNDARY    = %00000011
+000000r 2               TYPE_BSHADOW     = %00000010  ; Background shadow
+000000r 2               TYPE_BACKNONCOLL = %00000001  ; Background non-colliding
+000000r 2               TYPE_BACKGROUND  = %00000000
+000000r 2               
+000000r 2               SPRCTL1     = $FC81
+000000r 2               LITERAL     = %10000000
+000000r 2               PACKED      = %00000000
+000000r 2               ALGO3       = %01000000  ; Broken, do not set this bit!
+000000r 2               ; Sprite reload mask definitions
+000000r 2               RELOAD_MASK = %00110000
+000000r 2               RENONE      = %00000000  ; Reload nothing
+000000r 2               REHV        = %00010000  ; Reload hsize, vsize
+000000r 2               REHVS       = %00100000  ; Reload hsize, vsize, stretch
+000000r 2               REHVST      = %00110000  ; Reload hsize, vsize, stretch, tilt
+000000r 2               ; More sprite control 1 bit definitions
+000000r 2               REUSEPAL    = %00001000
+000000r 2               SKIP        = %00000100
+000000r 2               DRAWUP      = %00000010
+000000r 2               DRAWLEFT    = %00000001
+000000r 2               
+000000r 2               SPRCOLL   = $FC82
+000000r 2               SPRINIT   = $FC83
+000000r 2               SUZYHREV  = $FC88
+000000r 2               SUZYSREV  = $FC89
+000000r 2               SUZYBUSEN = $FC90
+000000r 2               
+000000r 2               SPRGO = $FC91
+000000r 2               ; SPRGO bit definitions
+000000r 2               SPRITE_GO = %00000001  ; sprite process start bit
+000000r 2               EVER_ON   = %00000100  ; everon detector enable
+000000r 2               
+000000r 2               SPRSYS = $FC92
+000000r 2               ; SPRSYS bit definitions for write operations
+000000r 2               SIGNMATH      = %10000000  ; signed math
+000000r 2               ACCUMULATE    = %01000000  ; accumulate multiplication results
+000000r 2               NO_COLLIDE    = %00100000  ; do not collide with any sprites (also SPRCOLL bit definition)
+000000r 2               VSTRETCH      = %00010000  ; stretch v
+000000r 2               LEFTHAND      = %00001000
+000000r 2               CLR_UNSAFE    = %00000100  ; unsafe access reset
+000000r 2               SPRITESTOP    = %00000010  ; request to stop sprite process
+000000r 2               ; SPRSYS bit definitions for read operations
+000000r 2               MATHWORKING   = %10000000  ; math operation in progress
+000000r 2               MATHWARNING   = %01000000  ; accumulator overflow on multiple or divide by zero
+000000r 2               MATHCARRY     = %00100000  ; last carry bit
+000000r 2               VSTRETCHING   = %00010000
+000000r 2               LEFTHANDED    = %00001000
+000000r 2               UNSAFE_ACCESS = %00000100  ; unsafe access performed
+000000r 2               SPRITETOSTOP  = %00000010  ; requested to stop
+000000r 2               SPRITEWORKING = %00000001  ; sprite process is active
+000000r 2               
+000000r 2               JOYSTICK = $FCB0
+000000r 2               ; JOYSTICK bit definitions
+000000r 2               JOYPAD_UP      = %10000000
+000000r 2               JOYPAD_DOWN    = %01000000
+000000r 2               JOYPAD_LEFT    = %00100000
+000000r 2               JOYPAD_RIGHT   = %00010000
+000000r 2               BUTTON_OPTION1 = %00001000
+000000r 2               BUTTON_OPTION2 = %00000100
+000000r 2               BUTTON_INNER   = %00000010
+000000r 2               BUTTON_OUTER   = %00000001
+000000r 2               
+000000r 2               SWITCHES    = $FCB1
+000000r 2               ; SWITCHES bit definitions
+000000r 2               CART1_IO_INACTIVE = %00000100
+000000r 2               CART0_IO_INACTIVE = %00000010
+000000r 2               BUTTON_PAUSE      = %00000001
+000000r 2               
+000000r 2               RCART0      = $FCB2
+000000r 2               RCART1      = $FCB3
+000000r 2               LEDS        = $FCC0
+000000r 2               PARSTATUS   = $FCC2
+000000r 2               PARDATA     = $FCC3
+000000r 2               HOWIE       = $FCC4
+000000r 2               
+000000r 2               ;
+000000r 2               ; *** Mikey Addresses
+000000r 2               ; ***
+000000r 2               
+000000r 2               ; Mikey timers
+000000r 2               
+000000r 2               ; Logical timer names
+000000r 2               TIMER0 = $FD00
+000000r 2               TIMER1 = $FD04
+000000r 2               TIMER2 = $FD08
+000000r 2               TIMER3 = $FD0C
+000000r 2               TIMER4 = $FD10
+000000r 2               TIMER5 = $FD14
+000000r 2               TIMER6 = $FD18
+000000r 2               TIMER7 = $FD1C
+000000r 2               HTIMER = TIMER0  ; horizontal line timer (timer 0)
+000000r 2               VTIMER = TIMER2  ; vertical blank timer (timer 2)
+000000r 2               STIMER = TIMER7  ; sound timer (timer 7)
+000000r 2               
+000000r 2               HTIMBKUP = $FD00  ; horizontal line timer (timer 0)
+000000r 2               HTIMCTLA = $FD01
+000000r 2               HTIMCNT  = $FD02
+000000r 2               HTIMCTLB = $FD03
+000000r 2               VTIMBKUP = $FD08  ; vertical blank timer (timer 2)
+000000r 2               VTIMCTLA = $FD09
+000000r 2               VTIMCNT  = $FD0A
+000000r 2               VTIMCTLB = $FD0B
+000000r 2               BAUDBKUP = $FD10  ; serial timer (timer 4)
+000000r 2               STIMBKUP = $FD1C  ; sound timer (timer 7)
+000000r 2               STIMCTLA = $FD1D
+000000r 2               STIMCNT  = $FD1E
+000000r 2               STIMCTLB = $FD1F
+000000r 2               
+000000r 2               TIM0BKUP = $FD00
+000000r 2               TIM0CTLA = $FD01
+000000r 2               TIM0CNT  = $FD02
+000000r 2               TIM0CTLB = $FD03
+000000r 2               TIM1BKUP = $FD04
+000000r 2               TIM1CTLA = $FD05
+000000r 2               TIM1CNT  = $FD06
+000000r 2               TIM1CTLB = $FD07
+000000r 2               TIM2BKUP = $FD08
+000000r 2               TIM2CTLA = $FD09
+000000r 2               TIM2CNT  = $FD0A
+000000r 2               TIM2CTLB = $FD0B
+000000r 2               TIM3BKUP = $FD0C
+000000r 2               TIM3CTLA = $FD0D
+000000r 2               TIM3CNT  = $FD0E
+000000r 2               TIM3CTLB = $FD0F
+000000r 2               TIM4BKUP = $FD10
+000000r 2               TIM4CTLA = $FD11
+000000r 2               TIM4CNT  = $FD12
+000000r 2               TIM4CTLB = $FD13
+000000r 2               TIM5BKUP = $FD14
+000000r 2               TIM5CTLA = $FD15
+000000r 2               TIM5CNT  = $FD16
+000000r 2               TIM5CTLB = $FD17
+000000r 2               TIM6BKUP = $FD18
+000000r 2               TIM6CTLA = $FD19
+000000r 2               TIM6CNT  = $FD1A
+000000r 2               TIM6CTLB = $FD1B
+000000r 2               TIM7BKUP = $FD1C
+000000r 2               TIM7CTLA = $FD1D
+000000r 2               TIM7CNT  = $FD1E
+000000r 2               TIM7CTLB = $FD1F
+000000r 2               
+000000r 2               ; Timer offsets
+000000r 2               TIM_BACKUP   = 0
+000000r 2               TIM_CONTROLA = 1
+000000r 2               TIM_COUNT    = 2
+000000r 2               TIM_CONTROLB = 3
+000000r 2               
+000000r 2               ; TIM_CONTROLA control bits
+000000r 2               ENABLE_INT     = %10000000
+000000r 2               RESET_DONE     = %01000000
+000000r 2               ENABLE_RELOAD  = %00010000
+000000r 2               ENABLE_COUNT   = %00001000
+000000r 2               AUD_CLOCK_MASK = %00000111
+000000r 2               ; Clock settings
+000000r 2               AUD_LINKING = %00000111
+000000r 2               AUD_64      = %00000110
+000000r 2               AUD_32      = %00000101
+000000r 2               AUD_16      = %00000100
+000000r 2               AUD_8       = %00000011
+000000r 2               AUD_4       = %00000010
+000000r 2               AUD_2       = %00000001
+000000r 2               AUD_1       = %00000000
+000000r 2               
+000000r 2               ; TIM_CONTROLB control bits
+000000r 2               TIMER_DONE = %00001000
+000000r 2               LAST_CLOCK = %00000100
+000000r 2               BORROW_IN  = %00000010
+000000r 2               BORROW_OUT = %00000001
+000000r 2               
+000000r 2               ; Mikey Audio
+000000r 2               
+000000r 2               AUDIO0 = $FD20  ; audio channel 0
+000000r 2               AUDIO1 = $FD28  ; audio channel 1
+000000r 2               AUDIO2 = $FD30  ; audio channel 2
+000000r 2               AUDIO3 = $FD38  ; audio channel 3
+000000r 2               
+000000r 2               AUD0VOL   = $FD20
+000000r 2               AUD0FEED  = $FD21
+000000r 2               AUD0OUT   = $FD22
+000000r 2               AUD0SHIFT = $FD23
+000000r 2               AUD0BKUP  = $FD24
+000000r 2               AUD0CTLA  = $FD25
+000000r 2               AUD0CNT   = $FD26
+000000r 2               AUD0CTLB  = $FD27
+000000r 2               AUD1VOL   = $FD28
+000000r 2               AUD1FEED  = $FD29
+000000r 2               AUD1OUT   = $FD2A
+000000r 2               AUD1SHIFT = $FD2B
+000000r 2               AUD1BKUP  = $FD2C
+000000r 2               AUD1CTLA  = $FD2D
+000000r 2               AUD1CNT   = $FD2E
+000000r 2               AUD1CTLB  = $FD2F
+000000r 2               AUD2VOL   = $FD30
+000000r 2               AUD2FEED  = $FD31
+000000r 2               AUD2OUT   = $FD32
+000000r 2               AUD2SHIFT = $FD33
+000000r 2               AUD2BKUP  = $FD34
+000000r 2               AUD2CTLA  = $FD35
+000000r 2               AUD2CNT   = $FD36
+000000r 2               AUD2CTLB  = $FD37
+000000r 2               AUD3VOL   = $FD38
+000000r 2               AUD3FEED  = $FD39
+000000r 2               AUD3OUT   = $FD3A
+000000r 2               AUD3SHIFT = $FD3B
+000000r 2               AUD3BKUP  = $FD3C
+000000r 2               AUD3CTLA  = $FD3D
+000000r 2               AUD3CNT   = $FD3E
+000000r 2               AUD3CTLB  = $FD3F
+000000r 2               
+000000r 2               ; AUD_CONTROL bits are almost identical to TIM_CONTROLA bits.
+000000r 2               ; See TIM_CONTROLA above for the other definitions
+000000r 2               FEEDBACK_7       = %10000000
+000000r 2               ENABLE_INTEGRATE = %00100000
+000000r 2               
+000000r 2               ; Stereo control registers follow
+000000r 2               ; Stereo capability does not exist in all Lynxes
+000000r 2               ; Left and right may be reversed, and if so will be corrected in a later
+000000r 2               ; release
+000000r 2               ATTENREG0 = $FD40 ; Stereo attenuation registers
+000000r 2               ATTENREG1 = $FD41
+000000r 2               ATTENREG2 = $FD42
+000000r 2               ATTENREG3 = $FD43
+000000r 2               
+000000r 2               MPAN    = $FD44
+000000r 2               MSTEREO = $FD50
+000000r 2               ; Bit definitions for MPAN and MSTEREO registers
+000000r 2               LEFT_ATTENMASK  = %11110000
+000000r 2               RIGHT_ATTENMASK = %00001111
+000000r 2               LEFT3_SELECT  = %10000000
+000000r 2               LEFT2_SELECT  = %01000000
+000000r 2               LEFT1_SELECT  = %00100000
+000000r 2               LEFT0_SELECT  = %00010000
+000000r 2               RIGHT3_SELECT = %00001000
+000000r 2               RIGHT2_SELECT = %00000100
+000000r 2               RIGHT1_SELECT = %00000010
+000000r 2               RIGHT0_SELECT = %00000001
+000000r 2               
+000000r 2               ; Mikey interrupts
+000000r 2               
+000000r 2               INTRST = $FD80
+000000r 2               INTSET = $FD81
+000000r 2               
+000000r 2               ; Interrupt bits in INTRST and INTSET
+000000r 2               TIMER0_INTERRUPT = %00000001
+000000r 2               TIMER1_INTERRUPT = %00000010
+000000r 2               TIMER2_INTERRUPT = %00000100
+000000r 2               TIMER3_INTERRUPT = %00001000
+000000r 2               TIMER4_INTERRUPT = %00010000
+000000r 2               TIMER5_INTERRUPT = %00100000
+000000r 2               TIMER6_INTERRUPT = %01000000
+000000r 2               TIMER7_INTERRUPT = %10000000
+000000r 2               
+000000r 2               HBL_INTERRUPT    = TIMER0_INTERRUPT
+000000r 2               VBL_INTERRUPT    = TIMER2_INTERRUPT
+000000r 2               SERIAL_INTERRUPT = TIMER4_INTERRUPT
+000000r 2               SND_INTERRUPT    = TIMER7_INTERRUPT
+000000r 2               
+000000r 2               MAGRDY0 = $FD84
+000000r 2               MAGRDY1 = $FD85
+000000r 2               AUDIN   = $FD86
+000000r 2               SYSCTL1 = $FD87
+000000r 2               ; SYSCTL1 bit definitions
+000000r 2               POWERON          = %00000010
+000000r 2               CART_ADDR_STROBE = %00000001
+000000r 2               
+000000r 2               MIKEYHREV = $FD88
+000000r 2               MIKEYSREV = $FD89
+000000r 2               
+000000r 2               IODIR = $FD8A
+000000r 2               IODAT = $FD8B
+000000r 2               ; IODIR and IODAT bit definitions
+000000r 2               AUDIN_BIT      = %00010000  ; Note that there is also the address AUDIN
+000000r 2               READ_ENABLE    = %00010000  ; Same bit for AUDIN_BIT
+000000r 2               RESTLESS       = %00001000
+000000r 2               NOEXP          = %00000100  ; If set, redeye is not connected
+000000r 2               CART_ADDR_DATA = %00000010
+000000r 2               CART_POWER_OFF = %00000010  ; Same bit for CART_ADDR_DATA
+000000r 2               EXTERNAL_POWER = %00000001
+000000r 2               
+000000r 2               SERCTL = $FD8C
+000000r 2               ; SERCTL bit definitions for write operations
+000000r 2               TXINTEN  = %10000000
+000000r 2               RXINTEN  = %01000000
+000000r 2               PAREN    = %00010000
+000000r 2               RESETERR = %00001000
+000000r 2               TXOPEN   = %00000100
+000000r 2               TXBRK    = %00000010
+000000r 2               PAREVEN  = %00000001
+000000r 2               ; SERCTL bit definitions for read operations
+000000r 2               TXRDY    = %10000000
+000000r 2               RXRDY    = %01000000
+000000r 2               TXEMPTY  = %00100000
+000000r 2               PARERR   = %00010000
+000000r 2               OVERRUN  = %00001000
+000000r 2               FRAMERR  = %00000100
+000000r 2               RXBRK    = %00000010
+000000r 2               PARBIT   = %00000001
+000000r 2               
+000000r 2               SERDAT   = $FD8D
+000000r 2               SDONEACK = $FD90
+000000r 2               CPUSLEEP = $FD91
+000000r 2               DISPCTL  = $FD92
+000000r 2               ; DISPCTL bit definitions
+000000r 2               DISP_COLOR   = %10000000  ; must be set to 1
+000000r 2               DISP_FOURBIT = %01000000  ; must be set to 1
+000000r 2               DISP_FLIP    = %00100000
+000000r 2               DMA_ENABLE   = %00010000  ; must be set to 1
+000000r 2               
+000000r 2               PBKUP    = $FD93
+000000r 2               DISPADRL = $FD94
+000000r 2               DISPADRH = $FD95
+000000r 2               
+000000r 2               MTEST0 = $FD9C
+000000r 2               ; MTEST0 bit definitions
+000000r 2               AT_CNT16   = %10000000
+000000r 2               AT_TEST    = %01000000
+000000r 2               XCLKEN     = %00100000
+000000r 2               UART_TURBO = %00010000
+000000r 2               ROM_SEL    = %00001000
+000000r 2               ROM_TEST   = %00000100
+000000r 2               M_TEST     = %00000010
+000000r 2               CPU_TEST   = %00000001
+000000r 2               
+000000r 2               MTEST1 = $FD9D
+000000r 2               ; MTEST1 bit definitions
+000000r 2               P_CNT16     = %01000000
+000000r 2               REF_CNT16   = %00100000
+000000r 2               VID_TRIG    = %00010000
+000000r 2               REF_TRIG    = %00001000
+000000r 2               VID_DMA_DIS = %00000100
+000000r 2               REF_FAST    = %00000010
+000000r 2               REF_DIS     = %00000001
+000000r 2               
+000000r 2               MTEST2 = $FD9E
+000000r 2               ; MTEST2 bit definitions
+000000r 2               V_STROBE  = %00010000
+000000r 2               V_ZERO    = %00001000
+000000r 2               H_120     = %00000100
+000000r 2               H_ZERO    = %00000010
+000000r 2               V_BLANKEF = %00000001
+000000r 2               
+000000r 2               PALETTE  = $FDA0  ; hardware rgb palette
+000000r 2               GCOLMAP  = $FDA0  ; hardware rgb palette (green)
+000000r 2               RBCOLMAP = $FDB0  ; hardware rgb palette (red-blue)
+000000r 2               
+000000r 2               ; Memory mapping control and 6502 vectors
+000000r 2               
+000000r 2               MAPCTL        = $FFF9
+000000r 2               ; MAPCTL bit definitions
+000000r 2               TURBO_DISABLE = %10000000
+000000r 2               VECTOR_SPACE  = %00001000  ; 1 maps RAM into specified space
+000000r 2               ROM_SPACE     = %00000100
+000000r 2               MIKEY_SPACE   = %00000010
+000000r 2               SUZY_SPACE    = %00000001
+000000r 2               
+000000r 2               VECTORS  = $FFFB
+000000r 2               INTVECTL = $FFFE
+000000r 2               INTVECTH = $FFFF
+000000r 2               RSTVECTL = $FFFC
+000000r 2               RSTVECTH = $FFFD
+000000r 2               NMIVECTL = $FFFA
+000000r 2               NMIVECTH = $FFFB
+000000r 2               
+000000r 1               .segment "ZEROPAGE" : zeropage
+000000r 1               
+000000r 1               XAML            = $24                   ; Last "opened" location Low
+000000r 1               XAMH            = $25                   ; Last "opened" location High
+000000r 1               STL             = $26                   ; Store address Low
+000000r 1               STH             = $27                   ; Store address High
+000000r 1               L               = $28                   ; Hex value parsing Low
+000000r 1               H               = $29                   ; Hex value parsing High
+000000r 1               YSAV            = $2A                   ; Used to see if hex value is given
+000000r 1               MODE            = $2B                   ; $00=XAM, $7F=STOR, $AE=BLOCK XAM
+000000r 1               
+000000r 1               .segment "DATA"
+000000r 1  xx xx xx xx  IN:              .res 256               ; Input buffer
+000004r 1  xx xx xx xx  
+000008r 1  xx xx xx xx  
+000100r 1               
+000100r 1               .segment "CODE"
+000000r 1               .org $0200
+000200  1               
+000200  1               ;.org $FF00
+000200  1               ;.segment "WOZMON"
+000200  1               
+000200  1               start:
+000200  1               RESET:
+000200  1  D8                           CLD                     ; Clear decimal arithmetic mode.
+000201  1  58                           CLI
+000202  1  A9 18                        LDA     #ENABLE_RELOAD+ENABLE_COUNT+AUD_1
+000204  1  8D 11 FD                     STA     TIMER4+TIM_CONTROLA
+000207  1               ; Bit 7 of Y must be set for fallthrough to ESCAPE!
+000207  1  A0 81                        LDY     #$81            ; 968 baud (rate is 1000000/((128+1)*8) = 968 Bps)
+000209  1  8C 10 FD                     STY     TIMER4+TIM_BACKUP
+00020C  1               
+00020C  1               NOTCR:
+00020C  1  C9 08                        CMP     #$08            ; Backspace key?
+00020E  1  F0 18                        BEQ     BACKSPACE       ; Yes.
+000210  1  C9 1B                        CMP     #$1B            ; ESC?
+000212  1  F0 03                        BEQ     ESCAPE          ; Yes.
+000214  1  C8                           INY                     ; Advance text index.
+000215  1  10 14                        BPL     NEXTCHAR        ; Auto ESC if line longer than 127.
+000217  1               
+000217  1               ESCAPE:
+000217  1  A9 5C                        LDA     #$5C            ; "\".
+000219  1  20 F4 02                     JSR     ECHO            ; Output it.
+00021C  1               
+00021C  1               GETLINE:
+00021C  1  A9 0D                        LDA     #$0D            ; Send CR
+00021E  1  20 F4 02                     JSR     ECHO
+000221  1  A9 0A                        LDA     #$0A            ; Send LF
+000223  1  20 F4 02                     JSR     ECHO
+000226  1               
+000226  1  A0 01                        LDY     #$01            ; Initialize text index.
+000228  1  88           BACKSPACE:      DEY                     ; Back up text index.
+000229  1  30 F1                        BMI     GETLINE         ; Beyond start of line, reinitialize.
+00022B  1               
+00022B  1               NEXTCHAR:
+00022B  1  2C 8C FD                     BIT     SERCTL
+00022E  1  50 FB        	            BVC     NEXTCHAR
+000230  1  AD 8D FD     	            LDA     SERDAT
+000233  1  99 rr rr                     STA     IN,Y            ; Add to text buffer.
+000236  1  C9 0D                        CMP     #$0D            ; CR?
+000238  1  D0 D2                        BNE     NOTCR           ; No.
+00023A  1               
+00023A  1  A0 FF                        LDY     #$FF            ; Reset text index.
+00023C  1  A9 00                        LDA     #$00            ; For XAM mode.
+00023E  1  AA                           TAX                     ; X=0.
+00023F  1               SETBLOCK:
+00023F  1  0A                           ASL
+000240  1               SETSTOR:
+000240  1  0A                           ASL                     ; Leaves $7B if setting STOR mode.
+000241  1               SETMODE:
+000241  1  85 2B                        STA     MODE            ; $00 = XAM, $74 = STOR, $B8 = BLOK XAM.
+000243  1               BLSKIP:
+000243  1  C8                           INY                     ; Advance text index.
+000244  1               NEXTITEM:
+000244  1  B9 rr rr                     LDA     IN,Y            ; Get character.
+000247  1  C9 0D                        CMP     #$0D            ; CR?
+000249  1  F0 D1                        BEQ     GETLINE         ; Yes, done this line.
+00024B  1  C9 2E                        CMP     #$2E            ; "."?
+00024D  1  90 F4                        BCC     BLSKIP          ; Skip delimiter.
+00024F  1  F0 EE                        BEQ     SETBLOCK        ; Set BLOCK XAM mode.
+000251  1  C9 3A                        CMP     #$3A            ; ":"?
+000253  1  F0 EB                        BEQ     SETSTOR         ; Yes, set STOR mode.
+000255  1  C9 52                        CMP     #$52            ; "R"?
+000257  1  F0 3B                        BEQ     RUNPROG         ; Yes, run user program.
+000259  1  86 28                        STX     L               ; $00 -> L.
+00025B  1  86 29                        STX     H               ;    and H.
+00025D  1  84 2A                        STY     YSAV            ; Save Y for comparison
+00025F  1               
+00025F  1               NEXTHEX:
+00025F  1  B9 rr rr                     LDA     IN,Y            ; Get character for hex test.
+000262  1  49 30                        EOR     #$30            ; Map digits to $0-9.
+000264  1  C9 0A                        CMP     #$0A            ; Digit?
+000266  1  90 06                        BCC     DIG             ; Yes.
+000268  1  69 88                        ADC     #$88            ; Map letter "A"-"F" to $FA-FF.
+00026A  1  C9 FA                        CMP     #$FA            ; Hex letter?
+00026C  1  90 11                        BCC     NOTHEX          ; No, character not hex.
+00026E  1               DIG:
+00026E  1  0A                           ASL
+00026F  1  0A                           ASL                     ; Hex digit to MSD of A.
+000270  1  0A                           ASL
+000271  1  0A                           ASL
+000272  1               
+000272  1  A2 04                        LDX     #$04            ; Shift count.
+000274  1               HEXSHIFT:
+000274  1  0A                           ASL                     ; Hex digit left, MSB to carry.
+000275  1  26 28                        ROL     L               ; Rotate into LSD.
+000277  1  26 29                        ROL     H               ; Rotate into MSD's.
+000279  1  CA                           DEX                     ; Done 4 shifts?
+00027A  1  D0 F8                        BNE     HEXSHIFT        ; No, loop.
+00027C  1  C8                           INY                     ; Advance text index.
+00027D  1  D0 E0                        BNE     NEXTHEX         ; Always taken. Check next character for hex.
+00027F  1               
+00027F  1               NOTHEX:
+00027F  1  C4 2A                        CPY     YSAV            ; Check if L, H empty (no hex digits).
+000281  1  F0 94                        BEQ     ESCAPE          ; Yes, generate ESC sequence.
+000283  1               
+000283  1  24 2B                        BIT     MODE            ; Test MODE byte.
+000285  1  50 10                        BVC     NOTSTOR         ; B6=0 is STOR, 1 is XAM and BLOCK XAM.
+000287  1               
+000287  1  A5 28                        LDA     L               ; LSD's of hex data.
+000289  1  81 26                        STA     (STL,X)         ; Store current 'store index'.
+00028B  1  E6 26                        INC     STL             ; Increment store index.
+00028D  1  D0 B5                        BNE     NEXTITEM        ; Get next item (no carry).
+00028F  1  E6 27                        INC     STH             ; Add carry to 'store index' high order.
+000291  1  4C 44 02     TONEXTITEM:     JMP     NEXTITEM        ; Get next command item.
+000294  1               
+000294  1               RUNPROG:
+000294  1  6C 24 00                     JMP     (XAML)          ; Run at current XAM index.
+000297  1               
+000297  1               NOTSTOR:
+000297  1  30 30                        BMI     XAMNEXT         ; B7 = 0 for XAM, 1 for BLOCK XAM.
+000299  1               
+000299  1  A2 02                        LDX     #$02            ; Byte count.
+00029B  1  B5 27        SETADR:         LDA     L-1,X           ; Copy hex data to
+00029D  1  95 25                        STA     STL-1,X         ;  'store index'.
+00029F  1  95 23                        STA     XAML-1,X        ; And to 'XAM index'.
+0002A1  1  CA                           DEX                     ; Next of 2 bytes.
+0002A2  1  D0 F7                        BNE     SETADR          ; Loop unless X = 0.
+0002A4  1               
+0002A4  1               NXTPRNT:
+0002A4  1  D0 19                        BNE     PRDATA          ; NE means no address to print.
+0002A6  1  A9 0D                        LDA     #$0D            ; CR.
+0002A8  1  20 F4 02                     JSR     ECHO            ; Output it.
+0002AB  1  A9 0A                        LDA     #$0A            ; LF.
+0002AD  1  20 F4 02                     JSR     ECHO            ; Output it.
+0002B0  1  A5 25                        LDA     XAMH            ; 'Examine index' high-order byte.
+0002B2  1  20 E1 02                     JSR     PRBYTE          ; Output it in hex format.
+0002B5  1  A5 24                        LDA     XAML            ; Low-order 'examine index' byte.
+0002B7  1  20 E1 02                     JSR     PRBYTE          ; Output it in hex format.
+0002BA  1  A9 3A                        LDA     #$3A            ; ":".
+0002BC  1  20 F4 02                     JSR     ECHO            ; Output it.
+0002BF  1               
+0002BF  1               PRDATA:
+0002BF  1  A9 20                        LDA     #$20            ; Blank.
+0002C1  1  20 F4 02                     JSR     ECHO            ; Output it.
+0002C4  1  A1 24                        LDA     (XAML,X)        ; Get data byte at 'examine index'.
+0002C6  1  20 E1 02                     JSR     PRBYTE          ; Output it in hex format.
+0002C9  1  86 2B        XAMNEXT:        STX     MODE            ; 0 -> MODE (XAM mode).
+0002CB  1  A5 24                        LDA     XAML
+0002CD  1  C5 28                        CMP     L               ; Compare 'examine index' to hex data.
+0002CF  1  A5 25                        LDA     XAMH
+0002D1  1  E5 29                        SBC     H
+0002D3  1  B0 BC                        BCS     TONEXTITEM      ; Not less, so no more data to output.
+0002D5  1               
+0002D5  1  E6 24                        INC     XAML
+0002D7  1  D0 02                        BNE     MOD8CHK         ; Increment 'examine index'.
+0002D9  1  E6 25                        INC     XAMH
+0002DB  1               
+0002DB  1               MOD8CHK:
+0002DB  1  A5 24                        LDA     XAML            ; Check low-order 'examine index' byte
+0002DD  1  29 07                        AND     #$07            ; For MOD 8 = 0
+0002DF  1  10 C3                        BPL     NXTPRNT         ; Always taken.
+0002E1  1               
+0002E1  1               PRBYTE:
+0002E1  1  48                           PHA                     ; Save A for LSD.
+0002E2  1  4A                           LSR
+0002E3  1  4A                           LSR
+0002E4  1  4A                           LSR                     ; MSD to LSD position.
+0002E5  1  4A                           LSR
+0002E6  1  20 EA 02                     JSR     PRHEX           ; Output hex digit.
+0002E9  1  68                           PLA                     ; Restore A.
+0002EA  1               
+0002EA  1               PRHEX:
+0002EA  1  29 0F                        AND     #$0F            ; Mask LSD for hex print.
+0002EC  1  09 30                        ORA     #$30            ; Add "0".
+0002EE  1  C9 3A                        CMP     #$3A            ; Digit?
+0002F0  1  90 02                        BCC     ECHO            ; Yes, output it.
+0002F2  1  69 06                        ADC     #$06            ; Add offset for letter.
+0002F4  1               
+0002F4  1               ECHO:
+0002F4  1  8D 8D FD                     STA     SERDAT          ; Output character to serial buffer
+0002F7  1               WAIT:
+0002F7  1  2C 8C FD                     BIT     SERCTL
+0002FA  1  10 FB                        BPL     WAIT
+0002FC  1  60                           RTS
+0002FC  1               

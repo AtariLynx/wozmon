@@ -3,8 +3,6 @@
 .include "lynx.inc"
 .segment "ZEROPAGE" : zeropage
 
-
-
 XAML            = $24                   ; Last "opened" location Low
 XAMH            = $25                   ; Last "opened" location High
 STL             = $26                   ; Store address Low
@@ -14,17 +12,18 @@ H               = $29                   ; Hex value parsing High
 YSAV            = $2A                   ; Used to see if hex value is given
 MODE            = $2B                   ; $00=XAM, $7F=STOR, $AE=BLOCK XAM
 
-IN              = $0200                 ; Input buffer
+.segment "DATA"
+IN:              .res 256               ; Input buffer
 
-.org $FF00
-.segment "WOZMON"
+.segment "CODE"
+.org $0200
 
-INIT_BUFFER:
-                RTS
+;.org $FF00
+;.segment "WOZMON"
 
+start:
 RESET:
                 CLD                     ; Clear decimal arithmetic mode.
-                JSR     INIT_BUFFER
                 CLI
                 LDA     #ENABLE_RELOAD+ENABLE_COUNT+AUD_1
                 STA     TIMER4+TIM_CONTROLA

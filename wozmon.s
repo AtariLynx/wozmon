@@ -1,8 +1,9 @@
 .setcpu "65C02"
-.segment "WOZMON"
 
-.org $FF00
 .include "lynx.inc"
+.segment "ZEROPAGE" : zeropage
+
+
 
 XAML            = $24                   ; Last "opened" location Low
 XAMH            = $25                   ; Last "opened" location High
@@ -15,20 +16,21 @@ MODE            = $2B                   ; $00=XAM, $7F=STOR, $AE=BLOCK XAM
 
 IN              = $0200                 ; Input buffer
 
-INIT_BUFFER:
-                RTS
+.org $FF00
+.segment "WOZMON"
 
-CHRIN:
+INIT_BUFFER:
                 RTS
 
 RESET:
                 CLD                     ; Clear decimal arithmetic mode.
                 JSR     INIT_BUFFER
                 CLI
-                LDA     #$1             ; 62500 baud
-                STA     TIMER4+TIM_BACKUP
-                LDY     #ENABLE_RELOAD+ENABLE_COUNT+AUD_1
-                STY     TIMER4+TIM_CONTROLA
+                LDA     #ENABLE_RELOAD+ENABLE_COUNT+AUD_1
+                STA     TIMER4+TIM_CONTROLA
+; Bit 7 of Y must be set for fallthrough to ESCAPE!
+                LDY     #$81            ; 968 baud (rate is 1000000/((128+1)*8) = 968 Bps)
+                STY     TIMER4+TIM_BACKUP
 
 NOTCR:
                 CMP     #$08            ; Backspace key?
@@ -53,8 +55,9 @@ BACKSPACE:      DEY                     ; Back up text index.
                 BMI     GETLINE         ; Beyond start of line, reinitialize.
 
 NEXTCHAR:
-                JSR     CHRIN
-                BCC     NEXTCHAR
+                BIT     SERCTL
+	            BVC     NEXTCHAR
+	            LDA     SERDAT
                 STA     IN,Y            ; Add to text buffer.
                 CMP     #$0D            ; CR?
                 BNE     NOTCR           ; No.
@@ -187,11 +190,8 @@ PRHEX:
                 ADC     #$06            ; Add offset for letter.
 
 ECHO:
-                STA     SERDAT          ; Output character.
-                PHA                     ; Save A.
-                LDA     #$FF            ; Initialize delay loop.
-TXDELAY:        DEC                     ; Decrement A.
-                BNE     TXDELAY         ; Until A gets to 0.
-                PLA                     ; Restore A.
-                RTS                     ; Return.
-
+                STA     SERDAT          ; Output character to serial buffer
+WAIT:
+                BIT     SERCTL
+                BPL     WAIT
+                RTS

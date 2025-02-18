@@ -1,16 +1,16 @@
 Modules list:
 -------------
 wozmon.o:
-    CODE              Offs=000000  Size=0000FD  Align=00001  Fill=0000
     DATA              Offs=000000  Size=000100  Align=00001  Fill=0000
+    WOZMON            Offs=000000  Size=0000FD  Align=00001  Fill=0000
 
 
 Segment list:
 -------------
 Name                   Start     End    Size  Align
 ----------------------------------------------------
-CODE                  000200  0002FC  0000FD  00001
-DATA                  0002FD  0003FC  000100  00001
+DATA                  000200  0002FF  000100  00001
+WOZMON                00FE00  00FEFC  0000FD  00001
 
 
 Exports list by name:

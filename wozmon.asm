@@ -1,7 +1,7 @@
 .setcpu "65C02"
 
 .include "lynx.inc"
-.segment "ZEROPAGE" : zeropage
+;.segment "ZEROPAGE" : zeropage
 
 XAML            = $24                   ; Last "opened" location Low
 XAMH            = $25                   ; Last "opened" location High
@@ -15,13 +15,9 @@ MODE            = $2B                   ; $00=XAM, $7F=STOR, $AE=BLOCK XAM
 .segment "DATA"
 IN:              .res 256               ; Input buffer
 
-.segment "CODE"
-.org $0200
+.org $FE00
+.segment "WOZMON"
 
-;.org $FF00
-;.segment "WOZMON"
-
-start:
 RESET:
                 CLD                     ; Clear decimal arithmetic mode.
                 CLI

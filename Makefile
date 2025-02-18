@@ -31,10 +31,16 @@ AFLAGS=-I $(CA65_INC) -t $(SYS)
 targets = wozmon.lnx
 all: $(targets)
 
-%.lnx: %.o
+%.lnx: %.o loader.enc
 	$(CL) -t $(SYS) -o $*.bin -C lynx-asm.cfg -v -m $*.map $<
-	lynxenc $*.bin $*.lyx
+#	lynxenc $*.bin $*.lyx
 	make_lnx $*.lyx -b0 256K -o $@
+
+%.enc: %.bin
+	lynxenc $< $@
+	
+%.bin: %.o
+	$(CL) -t $(SYS) -o $@ -C lynx-asm.cfg -v -m $*.map $<
 
 # Rule for making a *.o file out of a *.s or *.asm file
 %.o: %.s

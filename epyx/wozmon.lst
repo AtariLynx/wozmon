@@ -1,0 +1,416 @@
+Epyx HandyAsm 1.12      wozmon                          19-Apr-12514:06:06 Page    1
+                                                        14:06:06  
+
+    1                   * ====================================================
+    2                   
+    3                   	.LIST OFF
+    8                   	.LIST ON
+    9                   
+   10      0000         LO              .EQ 0
+   11      0001         HI              .EQ 1
+   12                   
+   13      FA00         BASE_ORG		.EQ $FA00
+   14                   
+   15                   * ====================================================
+   16                   
+   17      0024         NEXTZPG         .= $24
+   18                   
+   19                       BEGIN_ZPAGE
+    1      FFFE       + TEMPORG	  .= *
+    2 FFFE:           + 	  .ORG NEXTZPG
+    3                 + 
+   20                   
+   21 0024:             XAML            .DS 1 	; $24  Last "opened" location L
+   22 0025:             XAMH            .DS 1 	; $25  Last "opened" location H
+   23 0026:             STL             .DS 1 	; $26  Store address Low
+   24 0027:             STH             .DS 1 	; $27  Store address High
+   25 0028:             L               .DS 1 	; $28  Hex value parsing Low
+   26 0029:             H               .DS 1 	; $29  Hex value parsing High
+   27 002A:             YSAV            .DS 1 	; $2A  Used to see if hex value
+   28 002B:             MODE            .DS 1 	; $2B  $00=XAM, $7F=STOR, $AE=B
+   29                   
+   30                   	END_ZPAGE
+    1      002C       + NEXTZPG	  .= *
+    2      FALSE        	  #IF NEXTZPG > $0100
+    4                 + 	  #ENDIF
+    5 002C:           + 	  .ORG TEMPORG
+    6                 + 
+   31                   
+   32                   * ====================================================
+   33                   
+   34 FFFE:             		.OR BASE_ORG
+   35                   
+   36 FA00:             RESET:
+   37 FA00:D8           		CLD                     ; Clear decimal arithmetic m
+   38 FA01:58           		CLI
+   39 FA02:A9 18        		LDA     #ENABLE_RELOAD+ENABLE_COUNT+AUD_1
+   40 FA04:8D 11 FD     		STA     TIMER4+TIM_CONTROLA
+   41 FA07:A9 1D        		LDA		#PAREN+TXOPEN+PAREVEN+RESETERR ;
+   42 FA09:8D 8C FD     		STA		SERCTL
+   43 FA0C:A0 01        		LDY     #$01            ;  baud (rate is 1000000/((1
+   44 FA0E:8C 10 FD     		STY     TIMER4+TIM_BACKUP
+   45                   ; Bit 7 of Y must be set for fallthrough to ESCAPE!
+   46 FA11:A0 81        		LDY     #$81
+   47                   
+   48 FA13:             NOTCR:
+   49 FA13:C9 08        		CMP     #$08            ; Backspace key?
+   50 FA15:F0 **        		BEQ     BACKSPACE       ; Yes.
+   51 FA17:C9 1B        		CMP     #$1B            ; ESC?
+   52 FA19:F0 **        		BEQ     ESCAPE          ; Yes.
+   53 FA1B:C8           		INY                     ; Advance text index.
+   54 FA1C:10 **        		BPL     NEXTCHAR        ; Auto ESC if line longer th
+Epyx HandyAsm 1.12      wozmon                          19-Apr-12514:06:06 Page    2
+                                                        14:06:06  
+
+   55                   
+   56 FA1E:             ESCAPE:
+   57 FA1E:A9 5C        		LDA     #$5C            ; "\".
+   58 FA20:20 ** **     		JSR     ECHO            ; Output it.
+   59                   
+   60 FA23:             GETLINE:
+   61 FA23:A9 0D        		LDA     #$0D            ; Send CR
+   62 FA25:20 ** **     		JSR     ECHO
+   63                   ;		LDA     #$0A            ; Send LF
+   64                   ;		JSR     ECHO
+   65                   
+   66 FA28:A0 01        		LDY     #$01            ; Initialize text index.
+   67 FA2A:88           BACKSPACE:      DEY             ; Back up text index.
+   68 FA2B:30 F6        		BMI     GETLINE         ; Beyond start of line, rein
+   69                   
+   70 FA2D:             NEXTCHAR:
+   71 FA2D:2C 8C FD     		BIT     SERCTL
+   72 FA30:50 FB        		BVC     NEXTCHAR
+   73 FA32:AD 8D FD     		LDA     SERDAT
+   74 FA35:99 ** **     		STA     IN,Y            ; Add to text buffer.
+   75 FA38:C9 0D        		CMP     #$0D            ; CR?
+   76 FA3A:D0 D7        		BNE     NOTCR           ; No.
+   77                   
+   78 FA3C:A0 FF        		LDY     #$FF            ; Reset text index.
+   79 FA3E:A9 00        		LDA     #$00            ; For XAM mode.
+   80 FA40:AA           		TAX                     ; X=0.
+   81 FA41:             SETBLOCK:
+   82 FA41:0A           		ASL
+   83 FA42:             SETSTOR:
+   84 FA42:0A           		ASL                     ; Leaves $7B if setting STOR
+   85 FA43:             SETMODE:
+   86 FA43:85 2B        		STA     MODE            ; $00 = XAM, $74 = STOR, $B8
+   87 FA45:             BLSKIP:
+   88 FA45:C8           		INY                     ; Advance text index.
+   89 FA46:             NEXTITEM:
+   90 FA46:B9 ** **     		LDA     IN,Y            ; Get character.
+   91 FA49:C9 0D        		CMP     #$0D            ; CR?
+   92 FA4B:F0 D6        		BEQ     GETLINE         ; Yes, done this line.
+   93 FA4D:C9 2E        		CMP     #$2E            ; "."?
+   94 FA4F:90 F4        		BCC     BLSKIP          ; Skip delimiter.
+   95 FA51:F0 EE        		BEQ     SETBLOCK        ; Set BLOCK XAM mode.
+   96 FA53:C9 3A        		CMP     #$3A            ; ":"?
+   97 FA55:F0 EB        		BEQ     SETSTOR         ; Yes, set STOR mode.
+   98 FA57:C9 52        		CMP     #$52            ; "R"?
+   99 FA59:F0 **        		BEQ     RUNPROG         ; Yes, run user program.
+  100 FA5B:86 28        		STX     L               ; $00 -> L.
+  101 FA5D:86 29        		STX     H               ;    and H.
+  102 FA5F:84 2A        		STY     YSAV            ; Save Y for comparison
+  103                   
+  104 FA61:             NEXTHEX:
+  105 FA61:B9 ** **     		LDA     IN,Y            ; Get character for hex test
+  106 FA64:49 30        		EOR     #$30            ; Map digits to $0-9.
+  107 FA66:C9 0A        		CMP     #$0A            ; Digit?
+  108 FA68:90 **        		BCC     DIG             ; Yes.
+  109 FA6A:69 88        		ADC     #$88            ; Map letter "A"-"F" to $FA-
+  110 FA6C:C9 FA        		CMP     #$FA            ; Hex letter?
+  111 FA6E:90 **        		BCC     NOTHEX          ; No, character not hex.
+  112 FA70:             DIG:
+  113 FA70:0A           		ASL
+Epyx HandyAsm 1.12      wozmon                          19-Apr-12514:06:06 Page    3
+                                                        14:06:06  
+
+  114 FA71:0A           		ASL                     ; Hex digit to MSD of A.
+  115 FA72:0A           		ASL
+  116 FA73:0A           		ASL
+  117                   
+  118 FA74:A2 04        		LDX     #$04            ; Shift count.
+  119 FA76:             HEXSHIFT:
+  120 FA76:0A           		ASL                     ; Hex digit left, MSB to car
+  121 FA77:26 28        		ROL     L               ; Rotate into LSD.
+  122 FA79:26 29        		ROL     H               ; Rotate into MSD's.
+  123 FA7B:CA           		DEX                     ; Done 4 shifts?
+  124 FA7C:D0 F8        		BNE     HEXSHIFT        ; No, loop.
+  125 FA7E:C8           		INY                     ; Advance text index.
+  126 FA7F:D0 E0        		BNE     NEXTHEX         ; Always taken. Check next c
+  127                   
+  128 FA81:             NOTHEX:
+  129 FA81:C4 2A        		CPY     YSAV            ; Check if L, H empty (no he
+  130 FA83:F0 99        		BEQ     ESCAPE          ; Yes, generate ESC sequence
+  131                   
+  132 FA85:24 2B        		BIT     MODE            ; Test MODE byte.
+  133 FA87:50 **        		BVC     NOTSTOR         ; B6=0 is STOR, 1 is XAM and
+  134                   
+  135 FA89:A5 28        		LDA     L               ; LSD's of hex data.
+  136 FA8B:81 26        		STA     (STL,X)         ; Store current 'store index
+  137 FA8D:E6 26        		INC     STL             ; Increment store index.
+  138 FA8F:D0 B5        		BNE     NEXTITEM        ; Get next item (no carry).
+  139 FA91:E6 27        		INC     STH             ; Add carry to 'store index'
+  140 FA93:4C 46 FA     TONEXTITEM:     JMP     NEXTITEM        ; Get next com
+  141                   
+  142 FA96:             RUNPROG:
+  143 FA96:6C 24 00     		JMP     (XAML)          ; Run at current XAM index.
+  144                   
+  145 FA99:             NOTSTOR:
+  146 FA99:30 **        		BMI     XAMNEXT         ; B7 = 0 for XAM, 1 for BLOC
+  147                   
+  148 FA9B:A2 02        		LDX     #$02            ; Byte count.
+  149 FA9D:             SETADR:
+  150 FA9D:B5 27        		LDA     L-1,X           ; Copy hex data to
+  151 FA9F:95 25        		STA     STL-1,X         ;  'store index'.
+  152 FAA1:95 23        		STA     XAML-1,X        ; And to 'XAM index'.
+  153 FAA3:CA           		DEX                     ; Next of 2 bytes.
+  154 FAA4:D0 F7        		BNE     SETADR          ; Loop unless X = 0.
+  155                   
+  156 FAA6:             NXTPRNT:
+  157 FAA6:D0 **        		BNE     PRDATA          ; NE means no address to pri
+  158 FAA8:A9 0D        		LDA     #$0D            ; CR.
+  159 FAAA:20 ** **     		JSR     ECHO            ; Output it.
+  160                   ;		LDA     #$0A            ; LF.
+  161                   ;		JSR     ECHO            ; Output it.
+  162 FAAD:A5 25        		LDA     XAMH            ; 'Examine index' high-order
+  163 FAAF:20 ** **     		JSR     PRBYTE          ; Output it in hex format.
+  164 FAB2:A5 24        		LDA     XAML            ; Low-order 'examine index' 
+  165 FAB4:20 ** **     		JSR     PRBYTE          ; Output it in hex format.
+  166 FAB7:A9 3A        		LDA     #$3A            ; ":".
+  167 FAB9:20 ** **     		JSR     ECHO            ; Output it.
+  168                   
+  169 FABC:             PRDATA:
+  170 FABC:A9 20        		LDA     #$20            ; Blank.
+  171 FABE:20 ** **     		JSR     ECHO            ; Output it.
+  172 FAC1:A1 24        		LDA     (XAML,X)        ; Get data byte at 'examine 
+Epyx HandyAsm 1.12      wozmon                          19-Apr-12514:06:06 Page    4
+                                                        14:06:06  
+
+  173 FAC3:20 ** **     		JSR     PRBYTE          ; Output it in hex format.
+  174 FAC6:86 2B        XAMNEXT:        STX     MODE            ; 0 -> MODE (X
+  175 FAC8:A5 24        		LDA     XAML
+  176 FACA:C5 28        		CMP     L               ; Compare 'examine index' to
+  177 FACC:A5 25        		LDA     XAMH
+  178 FACE:E5 29        		SBC     H
+  179 FAD0:B0 C1        		BCS     TONEXTITEM      ; Not less, so no more data 
+  180                   
+  181 FAD2:E6 24        		INC     XAML
+  182 FAD4:D0 **        		BNE     MOD8CHK         ; Increment 'examine index'.
+  183 FAD6:E6 25        		INC     XAMH
+  184                   
+  185 FAD8:             MOD8CHK:
+  186 FAD8:A5 24        		LDA     XAML            ; Check low-order 'examine i
+  187 FADA:29 07        		AND     #$07            ; For MOD 8 = 0
+  188 FADC:10 C8        		BPL     NXTPRNT         ; Always taken.
+  189                   
+  190 FADE:             PRBYTE:
+  191 FADE:48           		PHA                     ; Save A for LSD.
+  192 FADF:4A           		LSR
+  193 FAE0:4A           		LSR
+  194 FAE1:4A           		LSR                     ; MSD to LSD position.
+  195 FAE2:4A           		LSR
+  196 FAE3:20 ** **     		JSR     PRHEX           ; Output hex digit.
+  197 FAE6:68           		PLA                     ; Restore A.
+  198                   
+  199 FAE7:             PRHEX:
+  200 FAE7:29 0F        		AND     #$0F            ; Mask LSD for hex print.
+  201 FAE9:09 30        		ORA     #$30            ; Add "0".
+  202 FAEB:C9 3A        		CMP     #$3A            ; Digit?
+  203 FAED:90 **        		BCC     ECHO            ; Yes, output it.
+  204 FAEF:69 06        		ADC     #$06            ; Add offset for letter.
+  205                   
+  206 FAF1:             ECHO:
+  207 FAF1:8D 8D FD     		STA     SERDAT          ; Output character to serial
+  208 FAF4:             WAIT:
+  209 FAF4:AD 8C FD     		LDA		SERCTL
+  210 FAF7:89 20        		BIT		#$20
+  211 FAF9:F0 F9        		BEQ		WAIT
+  212 FAFB:AD 8D FD     		LDA		SERDAT			; Read echo
+  213 FAFE:60           		RTS
+  214                   
+  215 FAFF:             IN:		.DS 	127				; Input buffer
+  216                   
+Epyx HandyAsm 1.12      Symbols                         19-Apr-12514:06:06 Page    5
+                                                        14:06:06  
+
+$0040 ACCUMULATE                        $0040 ALGO_3
+$0000 ASM.EQUSYMS                       $010C ASM.VERSION
+$FD40 ATTENREG0                         $FD41 ATTENREG1
+$FD42 ATTENREG2                         $FD43 ATTENREG3
+$FD86 AUDIN                             $0010 AUDIN_BIT
+$FD20 AUDIO0                            $FD28 AUDIO1
+$FD30 AUDIO2                            $FD38 AUDIO3
+$0000 AUD_1                             $0004 AUD_16
+$0001 AUD_2                             $0005 AUD_32
+$0002 AUD_4                             $0006 AUD_64
+$0003 AUD_8                             $0004 AUD_BACKUP
+$0007 AUD_CLOCK_MASK                    $0005 AUD_CONTROL
+$0006 AUD_COUNTER                       $0001 AUD_FEEDBACK
+$0007 AUD_LINKING                       $0007 AUD_OTHER
+$0002 AUD_OUTPUT                        $0003 AUD_SHIFT
+$0000 AUD_VOLCNTRL                      $0001 A_BUTTON
+$0000 BACKGROUND_SPRITE                 $0001 BACKNONCOLL_SPRITE
+$FA2A BACKSPACE                         $0000 BACK_SHADOW_SPRITE
+$FA00 BASE_ORG                          MACRO BEGIN_ALLOCATE_ZEROPAGE
+MACRO BEGIN_ZPAGE                       $00C0 BITS_MASK
+$FA45 BLSKIP                            $FDB0 BLUERED0
+$FDB1 BLUERED1                          $FDB2 BLUERED2
+$FDB3 BLUERED3                          $FDB4 BLUERED4
+$FDB5 BLUERED5                          $FDB6 BLUERED6
+$FDB7 BLUERED7                          $FDB8 BLUERED8
+$FDB9 BLUERED9                          $FDBA BLUEREDA
+$FDBB BLUEREDB                          $FDBC BLUEREDC
+$FDBD BLUEREDD                          $FDBE BLUEREDE
+$FDBF BLUEREDF                          $0002 BORROW_IN
+$0001 BORROW_OUT                        $0003 BOUNDARY_SPRITE
+$0002 BSHADOW_SPRITE                    $0002 B_BUTTON
+$0002 CART0_IO_INACTIVE                 $0004 CART1_IO_INACTIVE
+$0002 CART_ADDR_DATA                    $0001 CART_ADDR_STROBE
+$0002 CART_POWER_OFF                    $FC0F COLLADRH
+$FC0E COLLADRL                          $FC0B COLLBASH
+$FC0A COLLBASL                          $FC25 COLLOFFH
+$FC24 COLLOFFL                          $FD91 CPUSLEEP
+$FFFE CPU_IRQ                           $FFFA CPU_NMI
+$FFFC CPU_RESET                         $FA70 DIG
+$FD95 DISPADRH                          $FD94 DISPADRL
+$FD92 DISPCTL                           $1FE0 DISPLAY_BUFSIZE
+$0008 DISP_COLOR                        $0002 DISP_FLIP
+$0004 DISP_FOURBIT                      $0001 DMA_ENABLE
+$0001 DRAW_LEFT                         $0002 DRAW_UP
+$FAF1 ECHO                              $0008 ENABLE_COUNT
+$0080 ENABLE_INT                        $0020 ENABLE_INTEGRATE
+$0010 ENABLE_RELOAD                     MACRO END_ALLOCATE_ZEROPAGE
+MACRO END_ZPAGE                         $FA1E ESCAPE
+$0004 EVER_ON                           $0001 EXTERNAL_POWER
+$0080 FEEDBACK_7                        $0004 FLIP_BUTTON
+$00C0 FOUR_PER_PIXEL                    $0004 FRAMERR
+$FA23 GETLINE                           $FDA0 GREEN0
+$FDA1 GREEN1                            $FDA2 GREEN2
+$FDA3 GREEN3                            $FDA4 GREEN4
+$FDA5 GREEN5                            $FDA6 GREEN6
+$FDA7 GREEN7                            $FDA8 GREEN8
+$FDA9 GREEN9                            $FDAA GREENA
+$FDAB GREENB                            $FDAC GREENC
+Epyx HandyAsm 1.12      Symbols                         19-Apr-12514:06:06 Page    6
+                                                        14:06:06  
+
+$FDAD GREEND                            $FDAE GREENE
+$FDAF GREENF                            $0029 H
+$FC00 HARDWARE_START                    $FD00 HCOUNT
+$FA76 HEXSHIFT                          $0020 HFLIP
+$0001 HI                                $FC05 HOFFH
+$FC04 HOFFL                             $0001 HORIZONTAL_INT
+$FCC4 HOWIE                             $FC15 HPOSSTRTH
+$FC14 HPOSSTRTL                         $FC29 HSIZOFFH
+$FC28 HSIZOFFL                          $FAFF IN
+$0002 INNER_BUTTON                      $FD80 INTRST
+$FD81 INTSET                            $FD8B IODAT
+$FD8A IODIR                             $FCC3 IOData
+$FCC2 IOStatus                          $FCB0 JOYSTICK
+$0080 JOY_DOWN                          $0010 JOY_LEFT
+$0020 JOY_RIGHT                         $0040 JOY_UP
+$0028 L                                 $0004 LAST_CLOCK
+$FCC0 LEDS                              $0010 LEFT0_SELECT
+$0020 LEFT1_SELECT                      $0040 LEFT2_SELECT
+$0080 LEFT3_SELECT                      $0008 LEFTHAND
+$0008 LEFTHANDED                        $00F0 LEFT_ATTENMASK
+$0080 LITERAL                           $0000 LO
+$FFF9 MAPCTL                            $FC55 MATHA
+$FC54 MATHB                             $FC53 MATHC
+$0020 MATHCARRY                         $FC52 MATHD
+$FC63 MATHE                             $FC62 MATHF
+$FC61 MATHG                             $FC60 MATHH
+$FC6F MATHJ                             $FC6E MATHK
+$FC6D MATHL                             $FC6C MATHM
+$FC57 MATHN                             $FC56 MATHP
+$0040 MATHWARNING                       $0080 MATHWORKING
+$FD88 MIKEYHREV                         $FD89 MIKEYSREV
+$FD00 MIKEY_BASE                        $0002 MIKEY_SPACE
+$FAD8 MOD8CHK                           $002B MODE
+$FD44 MPAN                              $FD50 MSTEREO
+$FD9C MTEST0                            $FD9D MTEST1
+$FD9E MTEST2                            $FA2D NEXTCHAR
+$FA61 NEXTHEX                           $FA46 NEXTITEM
+$002C NEXTZPG                           $0004 NOEXP
+$0005 NONCOLL_SPRITE                    $0004 NORMAL_SPRITE
+$FA13 NOTCR                             $FA81 NOTHEX
+$FA99 NOTSTOR                           $0020 NO_COLLIDE
+$FAA6 NXTPRNT                           $0000 ONE_PER_PIXEL
+$0008 OPTION1_BUTTON                    $0004 OPTION2_BUTTON
+$0001 OUTER_BUTTON                      $0008 OVERRUN
+$0001 PARBIT                            $0010 PAREN
+$0010 PARERR                            $0001 PAREVEN
+$0001 PAUSE_SWITCH                      $FD93 PBKUP
+$0002 POWERON                           $FADE PRBYTE
+$FABC PRDATA                            $FAE7 PRHEX
+$FC2F PROCADRH                          $FC2E PROCADRL
+$FCB2 RCART_0                           $FCB3 RCART_1
+$0010 READ_ENABLE                       $0010 RELOAD_HV
+$0020 RELOAD_HVS                        $0030 RELOAD_HVST
+$0030 RELOAD_MASK                       $0000 RELOAD_NONE
+$FA00 RESET                             $0008 RESETERR
+$0040 RESET_DONE                        $0008 RESTART_BUTTON
+$0008 RESTLESS                          $0008 REUSE_PALETTE
+$0001 RIGHT0_SELECT                     $0002 RIGHT1_SELECT
+$0004 RIGHT2_SELECT                     $0008 RIGHT3_SELECT
+Epyx HandyAsm 1.12      Symbols                         19-Apr-12514:06:06 Page    7
+                                                        14:06:06  
+
+$000F RIGHT_ATTENMASK                   $0004 ROM_SPACE
+$FA96 RUNPROG                           $0002 RXBRK
+$0040 RXINTEN                           $0040 RXRDY
+$FC2D SCBADRH                           $FC2C SCBADRL
+$FC11 SCBNEXTH                          $FC10 SCBNEXTL
+$FC23 SCVPOSH                           $FC22 SCVPOSL
+$FD90 SDONEACK                          $FD8C SERCTL
+$FD8D SERDAT                            $FD10 SERIALRATE
+$0010 SERIAL_INT                        $FA9D SETADR
+$FA41 SETBLOCK                          $FA43 SETMODE
+$FA42 SETSTOR                           $0007 SHADOW_SPRITE
+$0080 SIGNMATH                          $0004 SKIP_SPRITE
+$FC82 SPRCOLL                           $FC80 SPRCTL0
+$FC81 SPRCTL1                           $FC13 SPRDLINEH
+$FC12 SPRDLINEL                         $FC21 SPRDOFFH
+$FC20 SPRDOFFL                          $FC91 SPRGO
+$FC19 SPRHSIZH                          $FC18 SPRHSIZL
+$FC83 SPRINIT                           $0002 SPRITESTOP
+$0002 SPRITETOSTOP                      $0001 SPRITEWORKING
+$0001 SPRITE_GO                         $FC92 SPRSYS
+$FC1B SPRVSIZH                          $FC1A SPRVSIZL
+$0027 STH                               $0026 STL
+$FC1D STRETCHH                          $FC1C STRETCHL
+$FC90 SUZYBUSEN                         $FC88 SUZYHREV
+$FC89 SUZYSREV                          $FC00 SUZY_BASE
+$0001 SUZY_SPACE                        $FCB1 SWITCHES
+$FD87 SYSCTL1                           $FFFE TEMPORG
+$0080 THREE_PER_PIXEL                   $FC03 TILTACUMH
+$FC02 TILTACUML                         $FC1F TILTH
+$FC1E TILTL                             $FD00 TIMER0
+$0001 TIMER0_INT                        $FD04 TIMER1
+$0002 TIMER1_INT                        $FD08 TIMER2
+$0004 TIMER2_INT                        $FD0C TIMER3
+$0008 TIMER3_INT                        $FD10 TIMER4
+$FD14 TIMER5                            $0020 TIMER5_INT
+$FD18 TIMER6                            $0040 TIMER6_INT
+$FD1C TIMER7                            $0080 TIMER7_INT
+$0008 TIMER_DONE                        $0000 TIM_BACKUP
+$0001 TIM_CONTROLA                      $0003 TIM_CONTROLB
+$0002 TIM_COUNT                         $FC01 TMPADRH
+$FC00 TMPADRL                           $FA93 TONEXTITEM
+$0080 TURBO_DISABLE                     $0040 TWO_PER_PIXEL
+$0002 TXBRK                             $0020 TXEMPTY
+$0080 TXINTEN                           $0004 TXOPEN
+$0080 TXRDY                             $0004 UNSAFEACCESS
+$0004 UNSAFEACCESSRST                   $FD08 VCOUNT
+$0008 VECTOR_SPACE                      $0004 VERTICAL_INT
+$0010 VFLIP                             $FC0D VIDADRH
+$FC0C VIDADRL                           $FC09 VIDBASH
+$FC08 VIDBASL                           $FC07 VOFFH
+$FC06 VOFFL                             $FC17 VPOSSTRTH
+$FC16 VPOSSTRTL                         $FC27 VSIZACUMH
+$FC26 VSIZACUML                         $FC2B VSIZOFFH
+$FC2A VSIZOFFL                          $0010 VSTRETCH
+$0010 VSTRETCHING                       $FAF4 WAIT
+$0025 XAMH                              $0024 XAML
+$FAC6 XAMNEXT                           $0006 XOR_SHADOW_SPRITE
+$0006 XOR_SPRITE                        $002A YSAV

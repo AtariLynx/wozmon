@@ -1,0 +1,37 @@
+* ===========================================================================
+
+	.LIST OFF
+
+		.IN 6502:include/harddefs.i
+		.IN 6502:macros/sys.mac
+
+	.LIST ON
+
+BASE_ORG	.EQ $0200
+WOZMON_ORG	.EQ $FA00
+
+* ===========================================================================
+
+		.OR BASE_ORG
+		
+START:
+		ldy MAPCTL
+		lda #ROM_SPACE
+		sta MAPCTL
+
+		ldy	#$00
+		ldx	#$ff
+		txs
+read2nd:
+		inx
+		lda	RCART_0
+		sta WOZMON_ORG,x
+		dey
+		bne	read2nd
+		jmp	WOZMON_ORG
+
+Size	.EQ *-START
+
+    #REPEAT 50-Size
+        .BYTE $00
+    #ENDM

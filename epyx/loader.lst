@@ -1,0 +1,228 @@
+Epyx HandyAsm 1.12      loader                          19-Apr-12510:04:13 Page    1
+                                                        10:04:13  
+
+    1                   * ====================================================
+    2                   
+    3                   	.LIST OFF
+    8                   	.LIST ON
+    9                   
+   10      0200         BASE_ORG	.EQ $0200
+   11      FA00         WOZMON_ORG	.EQ $FA00
+   12                   
+   13                   * ====================================================
+   14                   
+   15 FFFE:             		.OR BASE_ORG
+   16                   		
+   17 0200:             START:
+   18 0200:AC F9 FF     		ldy MAPCTL
+   19 0203:A9 04        		lda #ROM_SPACE
+   20 0205:8D F9 FF     		sta MAPCTL
+   21                   
+   22 0208:A0 00        		ldy	#$00
+   23 020A:A2 FF        		ldx	#$ff
+   24 020C:9A           		txs
+   25 020D:             read2nd:
+   26 020D:E8           		inx
+   27 020E:AD B2 FC     		lda	RCART_0
+   28 0211:9D 00 FA     		sta WOZMON_ORG,x
+   29 0214:88           		dey
+   30 0215:D0 F6        		bne	read2nd
+   31 0217:4C 00 FA     		jmp	WOZMON_ORG
+   32                   
+   33      001A         Size	.EQ *-START
+   34                   
+   35                       #REPEAT 50-Size
+   36 MACRO                     .BYTE $00
+   37                       #ENDM
+    1 021A:00         +         .BYTE $00
+    2 021B:00         +         .BYTE $00
+    3 021C:00         +         .BYTE $00
+    4 021D:00         +         .BYTE $00
+    5 021E:00         +         .BYTE $00
+    6 021F:00         +         .BYTE $00
+    7 0220:00         +         .BYTE $00
+    8 0221:00         +         .BYTE $00
+    9 0222:00         +         .BYTE $00
+   10 0223:00         +         .BYTE $00
+   11 0224:00         +         .BYTE $00
+   12 0225:00         +         .BYTE $00
+   13 0226:00         +         .BYTE $00
+   14 0227:00         +         .BYTE $00
+   15 0228:00         +         .BYTE $00
+   16 0229:00         +         .BYTE $00
+   17 022A:00         +         .BYTE $00
+   18 022B:00         +         .BYTE $00
+   19 022C:00         +         .BYTE $00
+   20 022D:00         +         .BYTE $00
+   21 022E:00         +         .BYTE $00
+   22 022F:00         +         .BYTE $00
+   23 0230:00         +         .BYTE $00
+   24 0231:00         +         .BYTE $00
+   25                 + 
+Epyx HandyAsm 1.12      Symbols                         19-Apr-12510:04:13 Page    2
+                                                        10:04:13  
+
+$0040 ACCUMULATE                        $0040 ALGO_3
+$0000 ASM.EQUSYMS                       $010C ASM.VERSION
+$FD40 ATTENREG0                         $FD41 ATTENREG1
+$FD42 ATTENREG2                         $FD43 ATTENREG3
+$FD86 AUDIN                             $0010 AUDIN_BIT
+$FD20 AUDIO0                            $FD28 AUDIO1
+$FD30 AUDIO2                            $FD38 AUDIO3
+$0000 AUD_1                             $0004 AUD_16
+$0001 AUD_2                             $0005 AUD_32
+$0002 AUD_4                             $0006 AUD_64
+$0003 AUD_8                             $0004 AUD_BACKUP
+$0007 AUD_CLOCK_MASK                    $0005 AUD_CONTROL
+$0006 AUD_COUNTER                       $0001 AUD_FEEDBACK
+$0007 AUD_LINKING                       $0007 AUD_OTHER
+$0002 AUD_OUTPUT                        $0003 AUD_SHIFT
+$0000 AUD_VOLCNTRL                      $0001 A_BUTTON
+$0000 BACKGROUND_SPRITE                 $0001 BACKNONCOLL_SPRITE
+$0000 BACK_SHADOW_SPRITE                $0200 BASE_ORG
+$00C0 BITS_MASK                         $FDB0 BLUERED0
+$FDB1 BLUERED1                          $FDB2 BLUERED2
+$FDB3 BLUERED3                          $FDB4 BLUERED4
+$FDB5 BLUERED5                          $FDB6 BLUERED6
+$FDB7 BLUERED7                          $FDB8 BLUERED8
+$FDB9 BLUERED9                          $FDBA BLUEREDA
+$FDBB BLUEREDB                          $FDBC BLUEREDC
+$FDBD BLUEREDD                          $FDBE BLUEREDE
+$FDBF BLUEREDF                          $0002 BORROW_IN
+$0001 BORROW_OUT                        $0003 BOUNDARY_SPRITE
+$0002 BSHADOW_SPRITE                    $0002 B_BUTTON
+$0002 CART0_IO_INACTIVE                 $0004 CART1_IO_INACTIVE
+$0002 CART_ADDR_DATA                    $0001 CART_ADDR_STROBE
+$0002 CART_POWER_OFF                    $FC0F COLLADRH
+$FC0E COLLADRL                          $FC0B COLLBASH
+$FC0A COLLBASL                          $FC25 COLLOFFH
+$FC24 COLLOFFL                          $FD91 CPUSLEEP
+$FFFE CPU_IRQ                           $FFFA CPU_NMI
+$FFFC CPU_RESET                         $FD95 DISPADRH
+$FD94 DISPADRL                          $FD92 DISPCTL
+$1FE0 DISPLAY_BUFSIZE                   $0008 DISP_COLOR
+$0002 DISP_FLIP                         $0004 DISP_FOURBIT
+$0001 DMA_ENABLE                        $0001 DRAW_LEFT
+$0002 DRAW_UP                           MACRO ECHO_VALUE
+$0008 ENABLE_COUNT                      $0080 ENABLE_INT
+$0020 ENABLE_INTEGRATE                  $0010 ENABLE_RELOAD
+$0004 EVER_ON                           $0001 EXTERNAL_POWER
+$0080 FEEDBACK_7                        $0004 FLIP_BUTTON
+$00C0 FOUR_PER_PIXEL                    $0004 FRAMERR
+$FDA0 GREEN0                            $FDA1 GREEN1
+$FDA2 GREEN2                            $FDA3 GREEN3
+$FDA4 GREEN4                            $FDA5 GREEN5
+$FDA6 GREEN6                            $FDA7 GREEN7
+$FDA8 GREEN8                            $FDA9 GREEN9
+$FDAA GREENA                            $FDAB GREENB
+$FDAC GREENC                            $FDAD GREEND
+$FDAE GREENE                            $FDAF GREENF
+$FC00 HARDWARE_START                    MACRO HBRK
+$FD00 HCOUNT                            $0020 HFLIP
+$FC05 HOFFH                             $FC04 HOFFL
+Epyx HandyAsm 1.12      Symbols                         19-Apr-12510:04:13 Page    3
+                                                        10:04:13  
+
+$0001 HORIZONTAL_INT                    $FCC4 HOWIE
+$FC15 HPOSSTRTH                         $FC14 HPOSSTRTL
+$FC29 HSIZOFFH                          $FC28 HSIZOFFL
+MACRO INITINT                           MACRO INITSYS
+$0002 INNER_BUTTON                      $FD80 INTRST
+$FD81 INTSET                            $FD8B IODAT
+$FD8A IODIR                             $FCC3 IOData
+$FCC2 IOStatus                          $FCB0 JOYSTICK
+$0080 JOY_DOWN                          $0010 JOY_LEFT
+$0020 JOY_RIGHT                         $0040 JOY_UP
+$0004 LAST_CLOCK                        $FCC0 LEDS
+$0010 LEFT0_SELECT                      $0020 LEFT1_SELECT
+$0040 LEFT2_SELECT                      $0080 LEFT3_SELECT
+$0008 LEFTHAND                          $0008 LEFTHANDED
+$00F0 LEFT_ATTENMASK                    $0080 LITERAL
+$FFF9 MAPCTL                            $FC55 MATHA
+$FC54 MATHB                             $FC53 MATHC
+$0020 MATHCARRY                         $FC52 MATHD
+$FC63 MATHE                             $FC62 MATHF
+$FC61 MATHG                             $FC60 MATHH
+$FC6F MATHJ                             $FC6E MATHK
+$FC6D MATHL                             $FC6C MATHM
+$FC57 MATHN                             $FC56 MATHP
+$0040 MATHWARNING                       $0080 MATHWORKING
+$FD88 MIKEYHREV                         $FD89 MIKEYSREV
+$FD00 MIKEY_BASE                        $0002 MIKEY_SPACE
+$FD44 MPAN                              $FD50 MSTEREO
+$FD9C MTEST0                            $FD9D MTEST1
+$FD9E MTEST2                            $0004 NOEXP
+$0005 NONCOLL_SPRITE                    $0004 NORMAL_SPRITE
+$0020 NO_COLLIDE                        $0000 ONE_PER_PIXEL
+$0008 OPTION1_BUTTON                    $0004 OPTION2_BUTTON
+$0001 OUTER_BUTTON                      $0008 OVERRUN
+$0001 PARBIT                            $0010 PAREN
+$0010 PARERR                            $0001 PAREVEN
+$0001 PAUSE_SWITCH                      $FD93 PBKUP
+$0002 POWERON                           $FC2F PROCADRH
+$FC2E PROCADRL                          $FCB2 RCART_0
+$FCB3 RCART_1                           $0010 READ_ENABLE
+$0010 RELOAD_HV                         $0020 RELOAD_HVS
+$0030 RELOAD_HVST                       $0030 RELOAD_MASK
+$0000 RELOAD_NONE                       $0008 RESETERR
+$0040 RESET_DONE                        MACRO RESET_TIMEOUT
+$0008 RESTART_BUTTON                    $0008 RESTLESS
+$0008 REUSE_PALETTE                     $0001 RIGHT0_SELECT
+$0002 RIGHT1_SELECT                     $0004 RIGHT2_SELECT
+$0008 RIGHT3_SELECT                     $000F RIGHT_ATTENMASK
+$0004 ROM_SPACE                         $0002 RXBRK
+$0040 RXINTEN                           $0040 RXRDY
+$FC2D SCBADRH                           $FC2C SCBADRL
+$FC11 SCBNEXTH                          $FC10 SCBNEXTL
+$FC23 SCVPOSH                           $FC22 SCVPOSL
+$FD90 SDONEACK                          $FD8C SERCTL
+$FD8D SERDAT                            $FD10 SERIALRATE
+$0010 SERIAL_INT                        MACRO SET_BRK
+$0007 SHADOW_SPRITE                     $0080 SIGNMATH
+$0004 SKIP_SPRITE                       $FC82 SPRCOLL
+$FC80 SPRCTL0                           $FC81 SPRCTL1
+$FC13 SPRDLINEH                         $FC12 SPRDLINEL
+Epyx HandyAsm 1.12      Symbols                         19-Apr-12510:04:13 Page    4
+                                                        10:04:13  
+
+$FC21 SPRDOFFH                          $FC20 SPRDOFFL
+$FC91 SPRGO                             $FC19 SPRHSIZH
+$FC18 SPRHSIZL                          $FC83 SPRINIT
+$0002 SPRITESTOP                        $0002 SPRITETOSTOP
+$0001 SPRITEWORKING                     $0001 SPRITE_GO
+$FC92 SPRSYS                            $FC1B SPRVSIZH
+$FC1A SPRVSIZL                          $0200 START
+$FC1D STRETCHH                          $FC1C STRETCHL
+$FC90 SUZYBUSEN                         $FC88 SUZYHREV
+$FC89 SUZYSREV                          $FC00 SUZY_BASE
+$0001 SUZY_SPACE                        $FCB1 SWITCHES
+$FD87 SYSCTL1                           $001A Size
+$0080 THREE_PER_PIXEL                   $FC03 TILTACUMH
+$FC02 TILTACUML                         $FC1F TILTH
+$FC1E TILTL                             $FD00 TIMER0
+$0001 TIMER0_INT                        $FD04 TIMER1
+$0002 TIMER1_INT                        $FD08 TIMER2
+$0004 TIMER2_INT                        $FD0C TIMER3
+$0008 TIMER3_INT                        $FD10 TIMER4
+$FD14 TIMER5                            $0020 TIMER5_INT
+$FD18 TIMER6                            $0040 TIMER6_INT
+$FD1C TIMER7                            $0080 TIMER7_INT
+$0008 TIMER_DONE                        $0000 TIM_BACKUP
+$0001 TIM_CONTROLA                      $0003 TIM_CONTROLB
+$0002 TIM_COUNT                         $FC01 TMPADRH
+$FC00 TMPADRL                           $0080 TURBO_DISABLE
+$0040 TWO_PER_PIXEL                     $0002 TXBRK
+$0020 TXEMPTY                           $0080 TXINTEN
+$0004 TXOPEN                            $0080 TXRDY
+$0004 UNSAFEACCESS                      $0004 UNSAFEACCESSRST
+$FD08 VCOUNT                            $0008 VECTOR_SPACE
+$0004 VERTICAL_INT                      $0010 VFLIP
+$FC0D VIDADRH                           $FC0C VIDADRL
+$FC09 VIDBASH                           $FC08 VIDBASL
+$FC07 VOFFH                             $FC06 VOFFL
+$FC17 VPOSSTRTH                         $FC16 VPOSSTRTL
+$FC27 VSIZACUMH                         $FC26 VSIZACUML
+$FC2B VSIZOFFH                          $FC2A VSIZOFFL
+$0010 VSTRETCH                          $0010 VSTRETCHING
+$FA00 WOZMON_ORG                        $0006 XOR_SHADOW_SPRITE
+$0006 XOR_SPRITE                        $020D read2nd
